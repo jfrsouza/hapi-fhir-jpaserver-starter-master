@@ -1,7 +1,10 @@
 import csv
+#import profile
 import requests
 from fhir.resources.patient import Patient
+from fhir.resources.identifier import Identifier
 from fhir.resources.condition import Condition
+from fhir.resources.humanname import HumanName
 from datetime import datetime
 from lxml import etree
 import json
@@ -59,9 +62,30 @@ def carregar_dados_fhir(url_fhir_server, caminho_arquivo_csv):
     with open(caminho_arquivo_csv, 'r') as arquivo_csv:
         leitor_csv = csv.DictReader(arquivo_csv)
         for linha in leitor_csv:
+
+            nome_humano = HumanName()
+            nome_humano.text = linha['Nome']
+            nome_humano.given = [linha['Nome']] if 'Nome' in linha else None
+            nome_humano.family = linha['Nome']
+            nome_humano.use = "official"
+
+            identifier = Identifier()
+            identifier.value = linha['CPF']
+            identifier.use = "official"
+
+
             paciente = Patient()
-            paciente.name = [{'text': linha['Nome']}]
-            paciente.identifier = [{'value': linha['CPF']}]
+            
+            # Adicionar informações ao campo meta
+            #paciente.meta = {
+            #    'versionId': linha['VersionId'] if 'VersionId' in linha else None,
+             #   'lastUpdated': linha['LastUpdated'] if 'LastUpdated' in linha else None,
+              #  'profile': 'https://simplifier.net/redenacionaldedadosemsaude/brindividuo',
+               # 'tag': [{'system': linha['TagSystem'], 'code': linha['TagCode']}] if 'TagSystem' in linha and 'TagCode' in linha else None,
+            #}
+            paciente.active = True
+            paciente.name = [nome_humano]
+            paciente.identifier = [identifier]
             paciente.gender = linha['Gênero']
 
             # Tenta converter ou formatar a data para o formato correto
@@ -73,6 +97,7 @@ def carregar_dados_fhir(url_fhir_server, caminho_arquivo_csv):
                 continue
 
             # Enviar o recurso Patient para o servidor FHIR
+            #print(paciente) 
             paciente_xml = criar_xml_recurso(paciente)
             resposta_paciente = requests.post(f'{url_fhir_server}/Patient', data=paciente_xml, headers={'Content-Type': 'application/xml'})
             
