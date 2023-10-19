@@ -1,8 +1,6 @@
 import csv
-#import profile
 import requests
 from fhir.resources.patient import Patient
-from fhir.resources.identifier import Identifier
 from fhir.resources.condition import Condition
 from fhir.resources.humanname import HumanName
 from datetime import datetime
@@ -31,21 +29,6 @@ def converter_para_formato_correto(data_str):
         # Se todas as tentativas falharem, retorna None
         return None
 
-def obj_para_dict(obj, _seen=None):
-    # Converte um objeto para um dicionário, lidando com referências circulares
-    if _seen is None:
-        _seen = set()
-
-    if id(obj) in _seen:
-        return 'CIRCULAR_REFERENCE'
-
-    _seen.add(id(obj))
-
-    if hasattr(obj, '__dict__'):
-        return {key: obj_para_dict(value, _seen) for key, value in obj.__dict__.items()}
-    else:
-        return obj
-
 def criar_xml_recurso(recurso):
     recurso_dict = obj_para_dict(recurso)
     root = etree.Element(recurso.resource_type)
@@ -62,10 +45,6 @@ def criar_xml_recurso(recurso):
             for sub_key, sub_value in value.items():
                 sub_element = etree.SubElement(element, sub_key)
                 sub_element.text = str(sub_value) if sub_value is not None else ""
-        elif key == 'identifie':
-            for sub_key, sub_value in value.items():
-                sub_element = etree.SubElement(element, sub_key)
-                sub_element.text = str(sub_value) if sub_value is not None else ""
         elif isinstance(value, list):
             for sub_value in value:
                 sub_element = etree.SubElement(element, key[:-1])
@@ -75,36 +54,39 @@ def criar_xml_recurso(recurso):
     
     return etree.tostring(root, pretty_print=True, encoding='unicode')
 
+def obj_para_dict(obj, _seen=None):
+    # Converte um objeto para um dicionário, lidando com referências circulares
+    if _seen is None:
+        _seen = set()
+
+    if id(obj) in _seen:
+        return 'CIRCULAR_REFERENCE'
+
+    _seen.add(id(obj))
+
+    if hasattr(obj, '__dict__'):
+        return {key: obj_para_dict(value, _seen) for key, value in obj.__dict__.items()}
+    elif isinstance(obj, list):
+        return [obj_para_dict(item, _seen) for item in obj]
+    else:
+        return obj
+
 def carregar_dados_fhir(url_fhir_server, caminho_arquivo_csv):
     ids_pacientes = []
 
     with open(caminho_arquivo_csv, 'r') as arquivo_csv:
         leitor_csv = csv.DictReader(arquivo_csv)
         for linha in leitor_csv:
-
-            nome_humano = HumanName()
-            nome_humano.text = linha['Nome']
-            nome_humano.given = [linha['Nome']]
-            nome_humano.family = linha['Nome']
-            nome_humano.use = "official"
-
-            identifier = Identifier()
-            identifier.value = linha['CPF']
-            identifier.use = "official"
-
-
             paciente = Patient()
             
-            # Adicionar informações ao campo meta
-            #paciente.meta = {
-            #    'versionId': linha['VersionId'] if 'VersionId' in linha else None,
-             #   'lastUpdated': linha['LastUpdated'] if 'LastUpdated' in linha else None,
-              #  'profile': 'https://simplifier.net/redenacionaldedadosemsaude/brindividuo',
-               # 'tag': [{'system': linha['TagSystem'], 'code': linha['TagCode']}] if 'TagSystem' in linha and 'TagCode' in linha else None,
-            #}
-            paciente.active = True
-            paciente.name = [nome_humano] #[{'text': linha['Nome']}]
-            paciente.identifier = [identifier] #[{'value': linha['CPF']}]
+            # Criar o recurso HumanName
+            nome_humano = HumanName()
+            nome_humano.text = linha['Nome']
+            nome_humano.family = [linha['Sobrenome']] if 'Sobrenome' in linha else None
+            nome_humano.given = [linha['Nome']] if 'Nome' in linha else None
+            paciente.name = [nome_humano]
+            
+            paciente.identifier = [{'value': linha['CPF']}]
             paciente.gender = linha['Gênero']
 
             # Tenta converter ou formatar a data para o formato correto
@@ -115,16 +97,21 @@ def carregar_dados_fhir(url_fhir_server, caminho_arquivo_csv):
                 print(f'Aviso: Data de Nascimento não reconhecida para o paciente {linha["Nome"]}. Ignorando este paciente.')
                 continue
 
+            # Adicionar informações ao campo meta
+            paciente.meta = {
+                'versionId': linha['VersionId'] if 'VersionId' in linha else None,
+                'lastUpdated': linha['LastUpdated'] if 'LastUpdated' in linha else None,
+                'profile': [linha['Profile']] if 'Profile' in linha else None,
+                'tag': [{'system': linha['TagSystem'], 'code': linha['TagCode']}] if 'TagSystem' in linha and 'TagCode' in linha else None,
+            }
+
             # Enviar o recurso Patient para o servidor FHIR
-            #print(paciente) 
             paciente_xml = criar_xml_recurso(paciente)
-            #print(paciente_xml)
             resposta_paciente = requests.post(f'{url_fhir_server}/Patient', data=paciente_xml, headers={'Content-Type': 'application/xml'})
-            print(resposta_paciente.text)
+            
             if resposta_paciente.status_code == 201:
                 resposta_paciente_xml = resposta_paciente.content
                 id_paciente = etree.fromstring(resposta_paciente_xml).find('.//id')
-                #print(etree.fromstring(resposta_paciente_xml).find('..//id'))
                 
                 if id_paciente is not None and id_paciente.text:
                     ids_pacientes.append(id_paciente.text)
