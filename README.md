@@ -1,5 +1,18 @@
 # HAPI-FHIR Starter Project
 
+Para implementação do teste segui exatamente os passos abaixo com as orientações do próprio teste da Minsait.
+
+Meus passos
+- Instalar Docker (com WSL 2)
+- Instalar Vs Code
+- Git
+- Configurar arquivo Docker Compose
+- Baixar projeto HAPI
+- Executar no terminal do VS Code - docker-compose up -d
+- FHIR Server rodando...
+- Instalar ambiente e extensões Python e FHIR resources
+- Carga patients.csv (script Python) - com ressalvas. Carrega apenas a quantidade de pacientes do arquivo mas sem os dados.
+
 This project is a complete starter project you can use to deploy a FHIR server using HAPI FHIR JPA.
 
 Note that this project is specifically intended for end users of the HAPI FHIR JPA server module (in other words, it helps you implement HAPI FHIR, it is not the source of the library itself). If you are looking for the main HAPI FHIR project, see here: https://github.com/hapifhir/hapi-fhir
