@@ -120,7 +120,7 @@ def carregar_dados_fhir(url_fhir_server, caminho_arquivo_csv):
             paciente_xml = criar_xml_recurso(paciente)
             #print(paciente_xml)
             resposta_paciente = requests.post(f'{url_fhir_server}/Patient', data=paciente_xml, headers={'Content-Type': 'application/xml'})
-            print(resposta_paciente.text)
+            #print(resposta_paciente.text)
             if resposta_paciente.status_code == 201:
                 resposta_paciente_xml = resposta_paciente.content
                 id_paciente = etree.fromstring(resposta_paciente_xml).find('.//id')
