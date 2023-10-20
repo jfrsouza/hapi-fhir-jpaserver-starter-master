@@ -12,6 +12,7 @@ Meus passos
 - FHIR Server rodando...
 - Instalar ambiente e extensões Python e FHIR resources
 - Carga patients.csv (script Python) - com ressalvas. Carrega apenas a quantidade de pacientes do arquivo mas sem os dados.
+- Arquivo Python da carga. Criei alguns mas o que utilizado e o cargaResourcePatient.py executado pelo terminal VS CODE.
 
 This project is a complete starter project you can use to deploy a FHIR server using HAPI FHIR JPA.
 
